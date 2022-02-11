@@ -4,20 +4,57 @@
 	import StarterKit from '@tiptap/starter-kit';
 	import Document from '@tiptap/extension-document';
 	import Placeholder from '@tiptap/extension-placeholder';
+	import { Button } from 'attractions';
+	import Collaboration from '@tiptap/extension-collaboration';
+
+	import { ColorHighlighter } from './LinksAdorn';
+
+	import * as Y from 'yjs';
+	import { WebrtcProvider } from 'y-webrtc';
+	import { WebsocketProvider } from 'y-websocket';
+	import { IndexeddbPersistence } from 'y-indexeddb';
+
+	import { Node, mergeAttributes } from '@tiptap/core';
+	//import NodeView from './NodeView';
+	import IFrameBlock from './IFrameBlock.svelte';
+	const NodeView = Node.create({
+		name: 'nodeView',
+		group: 'block',
+		atom: true,
+		parseHTML: () => [{ tag: 'node-view' }],
+		renderHTML: ({ HTMLAttributes }) => ['node-view', mergeAttributes(HTMLAttributes)],
+		addNodeView:
+			() =>
+			({ editor, node, getPos }) => {
+				console.log('creating node in tiptap');
+				const dom = document.createElement('div');
+				const slot = new IFrameBlock({ target: dom, props: { foo } });
+				return { dom };
+			}
+	});
 
 	let element;
-	let editor;
+	let editor: Editor;
+	let foo = 'bar';
+	let webrtcProvider: WebrtcProvider;
+	let websocketProvider: WebsocketProvider;
+	let idbProvider: IndexeddbPersistence;
+	let ydoc: Y.Doc;
 
 	const CustomDocument = Document.extend({
 		content: 'heading block*'
 	});
 
 	onMount(() => {
+		ydoc = new Y.Doc();
+		webrtcProvider = new WebrtcProvider('mr-potato-head', ydoc);
+		websocketProvider = new WebsocketProvider('wss://demos.yjs.dev', 'mr-potato-head', ydoc);
+		idbProvider = new IndexeddbPersistence('mr-potato-head', ydoc);
 		editor = new Editor({
 			element: element,
 			extensions: [
 				CustomDocument,
-				StarterKit.configure({ document: false }),
+				StarterKit.configure({ document: false, history: false }),
 				Placeholder.configure({
 					placeholder: ({ node }) => {
 						if (node.type.name === 'heading') {
@@ -25,12 +62,13 @@
 						}
 						return 'Can you add some further context?';
 					}
-				})
+				}),
+				NodeView,
+				Collaboration.configure({
+					document: ydoc
+				}),
+				ColorHighlighter
 			],
-			content: `
-      <h1>It'll always have a heading...</h1>
-      <p>Hello World! 🌍️ </p>
-      `,
 			onTransaction: () => {
 				// force re-render so `editor.isActive` works as expected
 				editor = editor;
@@ -42,35 +80,63 @@
 		if (editor) {
 			editor.destroy();
 		}
+		if (webrtcProvider) {
+			webrtcProvider.destroy();
+		}
 	});
 </script>
 
 {#if editor}
-	<button
-		on:click={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-		class:active={editor.isActive('heading', { level: 1 })}
-	>
-		H1
-	</button>
-	<button
-		on:click={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-		class:active={editor.isActive('heading', { level: 2 })}
-	>
-		H2
-	</button>
-	<button
-		on:click={() => editor.chain().focus().setParagraph().run()}
-		class:active={editor.isActive('paragraph')}
-	>
-		P
-	</button>
+	<div style="display: flex;">
+		<Button
+			small
+			rectangle
+			on:click={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+			selected={editor.isActive('heading', { level: 1 })}
+		>
+			H1
+		</Button>
+		<Button
+			small
+			rectangle
+			on:click={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+			selected={editor.isActive('heading', { level: 2 })}
+		>
+			H2
+		</Button>
+		<Button
+			small
+			rectangle
+			on:click={() => editor.chain().focus().setParagraph().run()}
+			selected={editor.isActive('paragraph')}
+		>
+			P
+		</Button>
+	</div>
 {/if}
 
 <div bind:this={element} />
 
-<style>
-	button.active {
+<style lang="scss">
+	.active {
 		background: black;
 		color: white;
+	}
+
+	:global(.color) {
+		white-space: nowrap;
+
+		&::before {
+			background-color: var(--color);
+			border: 1px solid rgba(128, 128, 128, 0.3);
+			border-radius: 2px;
+			content: ' ';
+			display: inline-block;
+			height: 1em;
+			margin-bottom: 0.15em;
+			margin-right: 0.1em;
+			vertical-align: middle;
+			width: 1em;
+		}
 	}
 </style>
