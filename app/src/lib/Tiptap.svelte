@@ -84,7 +84,7 @@
 		ydoc = new Y.Doc();
 		webrtcProvider = new WebrtcProvider('mr-potato-head', ydoc);
 		websocketProvider = new HocuspocusProvider({
-			url: 'ws://127.0.0.1:1234',
+			url: `ws://${window.location.host.split(":").at(0)}:1234`,
 			name: 'mr-potato-head',
 			document: ydoc
 		});
