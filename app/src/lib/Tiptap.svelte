@@ -6,13 +6,16 @@
 	import Placeholder from '@tiptap/extension-placeholder';
 	import { Button } from 'attractions';
 	import Collaboration from '@tiptap/extension-collaboration';
+	import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
 
 	import { ColorHighlighter } from './LinksAdorn';
 
 	import * as Y from 'yjs';
 	import { WebrtcProvider } from 'y-webrtc';
-	import { WebsocketProvider } from 'y-websocket';
+	import { HocuspocusProvider } from '@hocuspocus/provider';
 	import { IndexeddbPersistence } from 'y-indexeddb';
+
+	import IFrame from './blocks/iframe';
 
 	import { Node, mergeAttributes } from '@tiptap/core';
 	//import NodeView from './NodeView';
@@ -33,11 +36,43 @@
 			}
 	});
 
+	const colors = ['#958DF1', '#F98181', '#FBBC88', '#FAF594', '#70CFF8', '#94FADB', '#B9F18D'];
+	const names = [
+		'Lea Thompson',
+		'Cyndi Lauper',
+		'Tom Cruise',
+		'Madonna',
+		'Jerry Hall',
+		'Joan Collins',
+		'Winona Ryder',
+		'Christina Applegate',
+		'Alyssa Milano',
+		'Molly Ringwald',
+		'Ally Sheedy',
+		'Debbie Harry',
+		'Olivia Newton-John',
+		'Elton John',
+		'Michael J. Fox',
+		'Axl Rose',
+		'Emilio Estevez',
+		'Ralph Macchio',
+		'Rob Lowe',
+		'Jennifer Grey',
+		'Mickey Rourke',
+		'John Cusack',
+		'Matthew Broderick',
+		'Justine Bateman',
+		'Lisa Bonet'
+	];
+	const getRandomElement = (list) => list[Math.floor(Math.random() * list.length)];
+	const getRandomColor = () => getRandomElement(colors);
+	const getRandomName = () => getRandomElement(names);
+
 	let element;
 	let editor: Editor;
 	let foo = 'bar';
 	let webrtcProvider: WebrtcProvider;
-	let websocketProvider: WebsocketProvider;
+	let websocketProvider: HocuspocusProvider;
 	let idbProvider: IndexeddbPersistence;
 	let ydoc: Y.Doc;
 
@@ -48,7 +83,11 @@
 	onMount(() => {
 		ydoc = new Y.Doc();
 		webrtcProvider = new WebrtcProvider('mr-potato-head', ydoc);
-		websocketProvider = new WebsocketProvider('wss://demos.yjs.dev', 'mr-potato-head', ydoc);
+		websocketProvider = new HocuspocusProvider({
+			url: 'ws://127.0.0.1:1234',
+			name: 'mr-potato-head',
+			document: ydoc
+		});
 		idbProvider = new IndexeddbPersistence('mr-potato-head', ydoc);
 		editor = new Editor({
 			element: element,
@@ -67,7 +106,15 @@
 				Collaboration.configure({
 					document: ydoc
 				}),
-				ColorHighlighter
+				CollaborationCursor.configure({
+					provider: websocketProvider,
+					user: {
+						name: getRandomName(),
+						color: getRandomColor()
+					}
+				}),
+				ColorHighlighter,
+				IFrame
 			],
 			onTransaction: () => {
 				// force re-render so `editor.isActive` works as expected
@@ -138,5 +185,32 @@
 			vertical-align: middle;
 			width: 1em;
 		}
+	}
+
+	/* Give a remote user a caret */
+	:global(.collaboration-cursor__caret) {
+		border-left: 1px solid #0d0d0d;
+		border-right: 1px solid #0d0d0d;
+		margin-left: -1px;
+		margin-right: -1px;
+		pointer-events: none;
+		position: relative;
+		word-break: normal;
+	}
+
+	/* Render the username above the caret */
+	:global(.collaboration-cursor__label) {
+		border-radius: 3px 3px 3px 0;
+		color: #0d0d0d;
+		font-size: 12px;
+		font-style: normal;
+		font-weight: 600;
+		left: -1px;
+		line-height: normal;
+		padding: 0.1rem 0.3rem;
+		position: absolute;
+		top: -1.4em;
+		user-select: none;
+		white-space: nowrap;
 	}
 </style>
